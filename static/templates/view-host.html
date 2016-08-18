@@ -1,0 +1,64 @@
+<cf-header title="View Host" subtitle="{{world.name}}/{{host.hostname}}"></cf-header>
+
+<div class="container" style="padding-top: 25px;">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            User Accounts
+        </div>
+
+        <table class="table table-striped table-bordered">
+            <thead>
+            <tr>
+                <th>User</th>
+                <th>Group</th>
+                <th>Password</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr ng-repeat="u in host.accounts">
+                <td>{{u.name}}</td>
+                <td>{{u.group}}</td>
+                <td>{{u.password}}</td>
+                <td><a ng-click="user.name = u.name; user.group = u.group; user.password = u.password" data-toggle="modal" data-target="#accountModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="panel-footer">
+            <div style="text-align: right;">
+                <button type="button" class="btn btn-default btn-sm" style="margin:auto" data-toggle="modal" data-target="#accountModal">
+                    Add User Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Services
+        </div>
+
+        <table class="table table-striped table-bordered">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Options</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr ng-repeat="service in host.services" cf-service-row service="service"></tr>
+            </tbody>
+        </table>
+
+        <div class="panel-footer" style="text-align: right;">
+            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#serviceModal">Add Service</button>
+        </div>
+    </div>
+
+    <cf-modal-account user="user" host="host"></cf-modal-account>
+    <cf-modal-service user="user" host="host"></cf-modal-service>
+</div>

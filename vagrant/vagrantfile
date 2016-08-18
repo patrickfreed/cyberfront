@@ -1,0 +1,54 @@
+
+require 'net/http'
+require 'json'
+
+world_json = File.read('world.json')
+world_data = JSON.parse(world_json)
+
+url_hosts = "http://localhost/api/worlds/#{world_data['_id']['$oid']}/hosts"
+puts url_hosts
+puts world_data
+
+response = Net::HTTP.get(URI(url_hosts))
+data = JSON.parse(response)
+
+Vagrant.configure("2") { |config|
+  data['hosts'].each() { |host|
+    os = host['os']
+
+    config.vm.define(host['hostname']) { |c|
+      c.vm.box = os['box']
+      c.vm.hostname = host['hostname']
+      c.vm.network "private_network", type: "dhcp"
+
+      if os['kernel'] == 'LINUX' then
+        args = []
+
+        host['accounts'].each() { |account|
+          args << "#{account['name']}:#{account['password']}"
+        }
+
+        c.vm.provision("shell",
+                       path: '/cyberfront/scripts/user.sh',
+                       args: args,
+                       privileged: true,
+                       name: 'user')
+
+        host['services'].each() { |service|
+          if service['files'] != '' then
+            c.vm.provision("file",
+                           source: service['files'],
+                           destination: "/tmp/#{service['name']}.tar.gz")
+          end
+          
+          c.vm.provision("shell",
+                         path: service['install'],
+                         args: [service['name']],
+                         env: service['options'],
+                         privileged: true,
+                         name: service['name'])
+        }
+      end
+    }
+  }
+}

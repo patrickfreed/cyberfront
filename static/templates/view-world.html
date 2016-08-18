@@ -1,0 +1,27 @@
+<cf-header title="View World" subtitle="{{world.name}}"></cf-header>
+
+<div class="container">
+    <div style="padding-top: 25px;">
+        <table class="table table-striped table-bordered" style="padding:25px">
+            <thead>
+            <tr>
+                <th>Hostname</th>
+                <th>Operating System</th>
+                <th>Services</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr ng-repeat="host in world.hosts">
+                <td>{{host.hostname}}</td>
+                <td>{{host.os.name}} {{host.os.version}}</td>
+                <td><span ng-repeat="service in host.services">{{service.name}}</span></td>
+                <td><a href="#/view-host/{{world._id.$oid}}/{{host._id.$oid}}">View</a> | <a ng-click="clicked(host, 'edit')">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div style="text-align: center; padding-top: 15px;">
+        <a href="#/add-host/{{world._id.$oid}}" role="button" class="btn btn-primary" style="margin:auto">Add Host</a>
+    </div>
+</div>

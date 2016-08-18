@@ -1,0 +1,23 @@
+<cf-header title="Add a Host" subtitle="{{world.name}}"></cf-header>
+
+<div class="container" style="padding-top: 25px;">
+
+    <div class="input-group">
+        <span class="input-group-addon">Hostname</span>
+        <input ng-model="hostname" type="text" class="form-control" placeholder="test-hostname" aria-describedby="basic-addon1">
+    </div>
+
+    <div class="dropdown" style="padding-top:15px;">
+        <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            {{selected_os.name}} {{selected_os.version}}
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+            <li ng-repeat="os in oses"><a ng-click="select(os)">{{os.name}} {{os.version}}</a></li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; padding-top: 15px;">
+        <a href="#/view-world/{{world._id.$oid}}" ng-click="submit()" role="button" class="btn btn-primary" style="margin:auto">Add Host</a>
+    </div>
+</div>

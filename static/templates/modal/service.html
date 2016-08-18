@@ -1,0 +1,73 @@
+<div class="modal fade" style="margin: auto" id="serviceModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="myModalLabel">Add / Modify Service</h4>
+            </div>
+
+            <div class="modal-body">
+                <div class="dropdown" style="padding-top:15px;">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                        {{selected.service_name}}
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                        <li ng-repeat="service in services"><a ng-click="select(service);">{{service.service_name}} {{service.version}}</a></li>
+                    </ul>
+                </div>
+
+                <div class="form-horizontal" style="padding-top: 10px;">
+                    <div ng-repeat="(key, option) in selected.options">
+
+                        <div class="form-group">
+                            <label class="control-label col-sm-2" for="{{option.name}}">
+                                {{option.name}}
+                            </label>
+
+                            <div class="col-sm-10">
+
+                                <!-- Upload a file -->
+                                <div ng-if="option.type == 'FILE'" class="input-group">
+                                    <label class="input-group-btn">
+                                        <span class="btn btn-primary">
+                                            Browse
+                                            <input type="file" file-model="{{key}}" files="files" style="display: none">
+                                        </span>
+                                    </label>
+                                    <input type="text" ng-value="files[key].name" class="form-control" readonly>
+                                </div>
+
+                                <!-- String, int, basic input -->
+                                <div ng-if="option.type == 'STRING' || option.type == 'INT'">
+                                    <input id="{{option.name}}" ng-model="out[key]" type="text" class="form-control col-sm-10" aria-describedby="basic-addon1">
+                                </div>
+
+                                <!-- Yes/No input -->
+                                <div ng-if="option.type == 'BOOLEAN'">
+                                    <input switch-wrapper model="out[key]" type="checkbox" name="my-checkbox" checked>
+                                </div>
+
+                                <!-- Select a username -->
+                                <div ng-if="option.type == 'USER'">
+                                    <select class="form-control" id="{{option.name}}" ng-model="out[key]">
+                                        <!--<option ng-repeat="acct in host.os.accounts">{{acct.name}}</option>-->
+                                        <option ng-repeat="acct in host.accounts">{{acct.name}}</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="post_service()">Add Service</button>
+            </div>
+        </div>
+    </div>
+</div>
