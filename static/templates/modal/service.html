@@ -52,10 +52,19 @@
 
                                 <!-- Select a username -->
                                 <div ng-if="option.type == 'USER'">
-                                    <select class="form-control" id="{{option.name}}" ng-model="out[key]">
-                                        <!--<option ng-repeat="acct in host.os.accounts">{{acct.name}}</option>-->
-                                        <option ng-repeat="acct in host.accounts">{{acct.name}}</option>
-                                    </select>
+                                    <div ng-if="option.list">
+                                        <select multiple class="form-control" id="{{option.name}}" ng-model="out[key]">
+                                            <!--<option ng-repeat="acct in host.os.accounts">{{acct.name}}</option>-->
+                                            <option ng-repeat="acct in host.accounts">{{acct.name}}</option>
+                                        </select>
+                                    </div>
+
+                                    <div ng-if="!option.list">
+                                        <select class="form-control" id="{{option.name}}" ng-model="out[key]">
+                                            <!--<option ng-repeat="acct in host.os.accounts">{{acct.name}}</option>-->
+                                            <option ng-repeat="acct in host.accounts">{{acct.name}}</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                             </div>
@@ -66,7 +75,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="post_service()">Add Service</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="post_service()">Submit</button>
             </div>
         </div>
     </div>

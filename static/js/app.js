@@ -50,8 +50,8 @@ app.service('api', function($http) {
     };
 
     this.updateHost = function(host) {
-        self.hosts[data._id.$oid] = data;
-        self.worlds[data.world].hosts[data._id.$oid] = data;
+        self.hosts[host._id.$oid] = host;
+        self.worlds[host.world._id.$oid].hosts[hosts._id.$oid] = host;
     };
 
     this.doUpdate = function() {
@@ -278,30 +278,32 @@ app.directive('cfModalService', function() {
         templateUrl: '/static/templates/modal/service.html',
         scope: {
             host: '=',
-            user: '='
+            selected: '=',
+            out: '=options'
         },
         controller: function($scope, $http, api) {
-            $scope.selected = {service_name: 'asdfsdaf'};
-            $scope.out = {};
             $scope.files = {};
             $scope.services = api.services;
 
             $scope.select = function(service) {
+                console.log($scope.out);
                 $scope.selected = service;
-                console.log($scope.selected);
+
+                $scope.host.services.forEach(function(s) {
+                    if (service.name == s.name) {
+                        $scope.out = s.options;
+                    }
+                })
             };
 
             $scope.post_service = function() {
-                var fd = new FormData()
+                var fd = new FormData();
 
                 var params = {
                     service: $scope.selected._id.$oid,
                     options: $scope.out,
                     action: 'SERVICE'
                 };
-
-                console.log('out');
-                console.log($scope.out);
 
                 fd.append('json', angular.toJson(params));
 
@@ -383,6 +385,9 @@ app.config(['$routeProvider', function($routeProvider) {
                 var host_id = $routeParams.host_id;
                 var world_id = $routeParams.world_id;
 
+                $scope.user = {};
+                $scope.selected = {service_name: 'Select a Service'};
+                $scope.options = {};
                 $scope.services = api.services;
 
                 api.getHost(host_id).then(function(host) {
@@ -397,6 +402,16 @@ app.config(['$routeProvider', function($routeProvider) {
                         $scope.world = world;
                     });
                 });
+
+                $scope.editUser = function(u) {
+                    $scope.user = u;
+                };
+
+                $scope.editService = function(s) {
+                    //Object.assign($scope.selected, s);
+                    $scope.selected = $scope.services[s.source.$oid];
+                    $scope.options = s.options;
+                }
             }
         })
 

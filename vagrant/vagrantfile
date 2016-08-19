@@ -12,6 +12,8 @@ puts world_data
 response = Net::HTTP.get(URI(url_hosts))
 data = JSON.parse(response)
 
+puts data
+
 Vagrant.configure("2") { |config|
   data['hosts'].each() { |host|
     os = host['os']
@@ -35,11 +37,21 @@ Vagrant.configure("2") { |config|
                        name: 'user')
 
         host['services'].each() { |service|
-          if service['files'] != '' then
+          if service['files'] then
             c.vm.provision("file",
                            source: service['files'],
                            destination: "/tmp/#{service['name']}.tar.gz")
           end
+
+          service['options'].each() { |k,v|
+            if v.is_a? Array then
+              new = ""
+              v.each() { |vv|
+                new += "#{vv.to_s} "
+              }
+              service['options'][k] = new.chomp()
+            end
+          }
           
           c.vm.provision("shell",
                          path: service['install'],

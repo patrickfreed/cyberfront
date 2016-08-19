@@ -2,7 +2,7 @@ import os
 import shutil
 
 from mongoengine import Document, StringField, ReferenceField, ListField, EmbeddedDocument, EmbeddedDocumentListField, DictField, \
-    EmbeddedDocumentField, MapField
+    EmbeddedDocumentField, MapField, BooleanField, DynamicField
 
 from util import TMP, SERVICES
 
@@ -10,7 +10,11 @@ from util import TMP, SERVICES
 class OperatingSystem(Document):
     kernel = StringField(options=['WIN', 'LINUX', 'BSD'])  # TODO: ?
     name = StringField()
+
+    # Built in users and services
     accounts = EmbeddedDocumentListField('Account')
+    services = ListField(ReferenceField('Service'))
+
     version = StringField()
     box = StringField()
 
@@ -21,6 +25,8 @@ class ConfigurationOption(EmbeddedDocument):
 
     key = StringField()
     type = StringField(options=['STRING', 'FILE', 'INT', 'USER', 'BOOLEAN', 'LIST'], default='STRING')
+    list = BooleanField(default=False)
+    default = DynamicField()
 
 
 class InstalledService(EmbeddedDocument):
@@ -63,7 +69,7 @@ class Service(Document):
                     config = f.filename
                     f.save(path)
             else:
-                config = kwargs.get(key)
+                config = kwargs.get(key, option.default)
                 if config is None:
                     print "Missing configuration option " + key
                     return False
@@ -71,10 +77,11 @@ class Service(Document):
 
         if len(files) > 0:
             shutil.make_archive(outfile, 'gztar', TMP + host.hostname, self.name)
+            service = InstalledService(name=self.name, options=opts, files=outfile + '.tar.gz', install=install, source=self)
+        else:
+            service = InstalledService(name=self.name, options=opts, install=install, source=self)
 
-        service = InstalledService(name=self.name, options=opts, files=outfile + '.tar.gz', install=install, source=self)
         host.services.append(service)
-        host.save()
         return True
 
 
@@ -99,9 +106,7 @@ class Host(Document):
     ip = StringField()
     owner = StringField()
 
-    def __init__(self, **kwargs):
-        super(Host, self).__init__(**kwargs)
-
+    def install_os(self):
         if self.os is None:
             return
 
@@ -116,3 +121,6 @@ class Host(Document):
                 continue
 
             self.accounts.append(account)
+
+        for service in self.os.services:
+            service.install(self)

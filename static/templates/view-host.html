@@ -21,7 +21,7 @@
                 <td>{{u.name}}</td>
                 <td>{{u.group}}</td>
                 <td>{{u.password}}</td>
-                <td><a ng-click="user.name = u.name; user.group = u.group; user.password = u.password" data-toggle="modal" data-target="#accountModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
+                <td><a ng-click="editUser(u)" data-toggle="modal" data-target="#accountModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
             </tr>
             </tbody>
         </table>
@@ -50,15 +50,21 @@
             </thead>
 
             <tbody>
-            <tr ng-repeat="service in host.services" cf-service-row service="service"></tr>
+            <!--<tr ng-repeat="service in host.services" cf-service-row service="service"></tr>-->
+            <tr ng-repeat="service in host.services">
+                <td>{{services[service.source.$oid].service_name}}</td>
+                <td>{{service.version}}</td>
+                <td><object-table obj="service.options"></object-table></td>
+                <td><a ng-click="editService(service)" data-toggle="modal" data-target="#serviceModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
+            </tr>
             </tbody>
         </table>
 
         <div class="panel-footer" style="text-align: right;">
-            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#serviceModal">Add Service</button>
+            <button ng-click="selected = {}; options = {}" type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#serviceModal">Add Service</button>
         </div>
     </div>
 
     <cf-modal-account user="user" host="host"></cf-modal-account>
-    <cf-modal-service user="user" host="host"></cf-modal-service>
+    <cf-modal-service selected="selected" host="host" options="options"></cf-modal-service>
 </div>
