@@ -177,4 +177,8 @@ class Host(Document):
 
             out.append(module)
 
+            if isinstance(ref, Service):
+                for v in ref.vulnerabilities:
+                    self.install_module(v)
+
         return True

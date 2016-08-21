@@ -9,6 +9,15 @@ app.service('api', function($http) {
     this.vulns = {};
     this.hosts = {};
     this.worlds = {};
+    this.oses = {};
+
+    this.updateOperatingSystems = function() {
+        return $http.get('/api/os').success(function(data) {
+            data.forEach(function(os) {
+                self.oses[os._id.$oid] = os;
+            })
+        })
+    };
 
     this.updateVulns = function() {
         return $http.get('/api/vulns').success(function(data) {
@@ -54,10 +63,6 @@ app.service('api', function($http) {
         })
     };
 
-    this.updateHosts = function() {
-        self.hosts = {};
-    };
-
     this.updateHost = function(host) {
         self.hosts[host._id.$oid] = host;
         self.worlds[host.world._id.$oid].hosts[host._id.$oid] = host;
@@ -68,20 +73,9 @@ app.service('api', function($http) {
         var s = self.updateServices();
         var w = self.updateWorlds();
         var v = self.updateVulns();
+        var o = self.updateOperatingSystems();
 
-        return Promise.all([s, w, v]);
-
-        /*
-        return new Promise(function (resolve, other) {
-            var s = self.updateServices();
-            var w = self.updateWorlds();
-            // var h = self.updateHosts();
-
-            Promise.all([s, w]).then(function() {
-                resolve();
-            });
-        });
-        */
+        return Promise.all([s, w, v, o]);
     };
 
     this.getService = function(service_id) {
@@ -94,7 +88,7 @@ app.service('api', function($http) {
                 resolve(self.services[service_id]);
             }
         });
-    }
+    };
 
     this.getServices = function () {
         return new Promise(function(resolve, reject) {
@@ -147,18 +141,6 @@ app.service('api', function($http) {
                 })
             } else {
                 resolve(self.hosts[id]);
-            }
-        });
-    };
-
-    this.getHosts = function(world_id) {
-        return new Promise(function(resolve, reject) {
-            if (self.promise) {
-                self.promise.then(function(_) {
-                    resolve(self.hosts);
-                })
-            } else {
-                resolve(self.hosts);
             }
         });
     };
@@ -447,16 +429,13 @@ app.config(['$routeProvider', function($routeProvider) {
         // Add host page
         .when('/add-host/:world_id', {
             templateUrl: '/static/templates/add-host.html',
-            controller: function($scope, $http, $routeParams) {
+            controller: function($scope, $http, $routeParams, api) {
                 $scope.selected_os = {name: 'Operating System', version: ''};
                 $scope.hostname = '';
+                $scope.oses = api.oses;
 
-                $http.get('/api/worlds/' + $routeParams.world_id).success(function(data) {
-                    $scope.world = data;
-                });
-
-                $http.get('/api/os').success(function(data) {
-                    $scope.oses = data;
+                api.getWorld($routeParams.world_id).then(function(world) {
+                    $scope.world = world;
                 });
 
                 $scope.select = function(os) {

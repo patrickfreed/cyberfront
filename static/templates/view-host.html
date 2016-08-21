@@ -86,7 +86,7 @@
             <tr ng-repeat="vuln in host.vulnerabilities">
                 <td>{{vulns[vuln.source._ref.$id.$oid].full_name}}</td>
                 <td>{{vulns[vuln.source._ref.$id.$oid].category}}</td>
-                <td>{{vuln.cve}}</td>
+                <td>{{vulns[vuln.source._ref.$id.$oid].cve}}</td>
                 <td><object-table obj="vuln.options"></object-table></td>
                 <td><a ng-click="editService(vuln)" data-toggle="modal" data-target="#serviceModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
             </tr>
