@@ -11,11 +11,11 @@
             <div class="modal-body">
                 <div class="dropdown" style="padding-top:15px;">
                     <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        {{selected.service_name}}
+                        {{selected.full_name}}
                         <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-                        <li ng-repeat="service in services"><a ng-click="select(service);">{{service.service_name}} {{service.version}}</a></li>
+                        <li ng-repeat="module in choices"><a ng-click="select(module);">{{module.full_name}}</a></li>
                     </ul>
                 </div>
 
@@ -61,10 +61,15 @@
 
                                     <div ng-if="!option.list">
                                         <select class="form-control" id="{{option.name}}" ng-model="out[key]">
-                                            <!--<option ng-repeat="acct in host.os.accounts">{{acct.name}}</option>-->
                                             <option ng-repeat="acct in host.accounts">{{acct.name}}</option>
                                         </select>
                                     </div>
+                                </div>
+
+                                <div ng-if="option.type == 'SERVICE'">
+                                    <select class="form-control" id="{{option.name}}" ng-model="out[key]">
+                                        <option ng-repeat="service in host.services">{{service.name}}</option>
+                                    </select>
                                 </div>
 
                             </div>
@@ -75,6 +80,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" ng-click="choicedebug()">asdf</button>
                 <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="post_service()">Submit</button>
             </div>
         </div>

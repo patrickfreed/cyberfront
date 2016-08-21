@@ -1,5 +1,8 @@
 TMP = '/cyberfront/tmp/'
-SERVICES = '/Users/Patrick/Documents/cyberfront/scripts/service/'
+DEFAULTS = '/cyberfront/defaults/'
+SERVICES = '/cyberfront/scripts/service/'
+VULNERABILITIES = '/cyberfront/scripts/vuln/'
+
 
 def fileize(string):
     return string.lower().replace(' ', '_')

@@ -13,12 +13,11 @@ SERVICE_NAME=$1
 # user: user to run server as
 # group: group to run server as
 # port: port to listen on
+# wwwroot: root of webserver
 ##
 
-wwwroot="/var/www/html"  # TODO: update this to be variable
-
 # Extract files
-cd /tmp
+cd ${CF_DIR}
 tar -zxf ${SERVICE_NAME}.tar.gz
 cd ${SERVICE_NAME}
 
@@ -37,8 +36,12 @@ tar -zxf ${files}
 cd wwwroot
 cp -r ./* ${wwwroot}
 
+# Update root configuration
+sed -i "s#DocumentRoot /var/www/html#DocumentRoot ${wwwroot}#g" /etc/apache2/sites-enabled/000-default.conf
+
 # Change ports
 sed -i "s/Listen 80/Listen ${port}/g" /etc/apache2/ports.conf
+sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:${port}>/g" /etc/apache2/sites-enabled/000-default.conf
 
 # Change users
 sed -i "s/APACHE_RUN_USER=www-data/APACHE_RUN_USER=${user}/g" /etc/apache2/envvars
@@ -50,7 +53,3 @@ if [ ${php} == "true" ]; then
 else
     service apache2 start
 fi
-
-# Cleaning up...
-rm -r /tmp/${SERVICE_NAME}
-rm /tmp/${SERVICE_NAME}.tar.gz

@@ -1,11 +1,10 @@
-
 require 'net/http'
 require 'json'
 
 world_json = File.read('world.json')
 world_data = JSON.parse(world_json)
-
-url_hosts = "http://localhost/api/worlds/#{world_data['_id']['$oid']}/hosts"
+  
+url_hosts = "http://192.168.7.1/api/worlds/#{world_data['_id']['$oid']}/hosts"
 puts url_hosts
 puts world_data
 
@@ -13,6 +12,8 @@ response = Net::HTTP.get(URI(url_hosts))
 data = JSON.parse(response)
 
 puts data
+
+CF_DIR = '/tmp/cf_ins/'
 
 Vagrant.configure("2") { |config|
   data['hosts'].each() { |host|
@@ -26,6 +27,8 @@ Vagrant.configure("2") { |config|
       if os['kernel'] == 'LINUX' then
         args = []
 
+        c.vm.provision("shell", inline: "mkdir #{CF_DIR} && chmod 777 #{CF_DIR}")
+        
         host['accounts'].each() { |account|
           args << "#{account['name']}:#{account['password']}"
         }
@@ -36,30 +39,40 @@ Vagrant.configure("2") { |config|
                        privileged: true,
                        name: 'user')
 
-        host['services'].each() { |service|
-          if service['files'] then
+        (host['services'] + host['vulnerabilities']).each() { |mod|
+          name = mod['name']
+          options = mod['options']
+          files = mod['files']
+
+          c.vm.provision("shell", inline: "echo '#{mod.to_json}' >> #{CF_DIR}#{name}.json")
+
+          if files then
             c.vm.provision("file",
-                           source: service['files'],
-                           destination: "/tmp/#{service['name']}.tar.gz")
+                           source: files,
+                           destination: "#{CF_DIR}#{name}.tar.gz")
           end
 
-          service['options'].each() { |k,v|
+          options.each() { |k,v|
             if v.is_a? Array then
               new = ""
               v.each() { |vv|
                 new += "#{vv.to_s} "
               }
-              service['options'][k] = new.chomp()
+              options[k] = new.chomp()
             end
           }
+
+          options['CF_DIR'] = CF_DIR
           
           c.vm.provision("shell",
-                         path: service['install'],
-                         args: [service['name']],
-                         env: service['options'],
+                         path: mod['install'],
+                         args: [name],
+                         env: options,
                          privileged: true,
-                         name: service['name'])
+                         name: name)
         }
+
+        c.vm.provision("shell", inline: "rm -r #{CF_DIR}; rm /tmp/vagrant-shell")
       end
     }
   }

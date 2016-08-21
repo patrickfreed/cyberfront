@@ -6,8 +6,17 @@ app.service('api', function($http) {
     var self = this;
 
     this.services = {};
+    this.vulns = {};
     this.hosts = {};
     this.worlds = {};
+
+    this.updateVulns = function() {
+        return $http.get('/api/vulns').success(function(data) {
+            data.forEach(function(vuln) {
+                self.vulns[vuln._id.$oid] = vuln;
+            });
+        })
+    };
 
     this.updateServices = function() {
         return $http.get('/api/services').success(function(data) {
@@ -51,11 +60,18 @@ app.service('api', function($http) {
 
     this.updateHost = function(host) {
         self.hosts[host._id.$oid] = host;
-        self.worlds[host.world._id.$oid].hosts[hosts._id.$oid] = host;
+        self.worlds[host.world._id.$oid].hosts[host._id.$oid] = host;
     };
 
     this.doUpdate = function() {
         console.log('updating api');
+        var s = self.updateServices();
+        var w = self.updateWorlds();
+        var v = self.updateVulns();
+
+        return Promise.all([s, w, v]);
+
+        /*
         return new Promise(function (resolve, other) {
             var s = self.updateServices();
             var w = self.updateWorlds();
@@ -65,6 +81,7 @@ app.service('api', function($http) {
                 resolve();
             });
         });
+        */
     };
 
     this.getService = function(service_id) {
@@ -272,26 +289,37 @@ app.directive('cfModalAccount', function() {
     }
 });
 
-app.directive('cfModalService', function() {
+app.directive('cfModalModuleInstaller', function() {
     return {
         restrict: 'E',
         templateUrl: '/static/templates/modal/service.html',
         scope: {
             host: '=',
             selected: '=',
-            out: '=options'
+            out: '=options',
+            choices: '=',
+            type: '='
         },
         controller: function($scope, $http, api) {
             $scope.files = {};
             $scope.services = api.services;
 
+            $scope.choicedebug = function() {
+                console.log($scope.choices);
+            };
+
             $scope.select = function(service) {
-                console.log($scope.out);
                 $scope.selected = service;
 
                 $scope.host.services.forEach(function(s) {
                     if (service.name == s.name) {
                         $scope.out = s.options;
+                    }
+                });
+
+                $scope.host.vulnerabilities.forEach(function(v) {
+                    if (service.name == v.name) {
+                        $scope.out = v.options;
                     }
                 })
             };
@@ -300,9 +328,9 @@ app.directive('cfModalService', function() {
                 var fd = new FormData();
 
                 var params = {
-                    service: $scope.selected._id.$oid,
+                    module: $scope.selected._id.$oid,
                     options: $scope.out,
-                    action: 'SERVICE'
+                    action: 'MODULE'
                 };
 
                 fd.append('json', angular.toJson(params));
@@ -386,14 +414,15 @@ app.config(['$routeProvider', function($routeProvider) {
                 var world_id = $routeParams.world_id;
 
                 $scope.user = {};
-                $scope.selected = {service_name: 'Select a Service'};
+                $scope.selected = {full_name: 'Select a Service'};
                 $scope.options = {};
+                $scope.choices = [];
                 $scope.services = api.services;
+                $scope.vulns = api.vulns;
 
                 api.getHost(host_id).then(function(host) {
                     $scope.$apply(function() {
                         $scope.host = host;
-                        console.log($scope.host);
                     })
                 });
 
@@ -408,9 +437,9 @@ app.config(['$routeProvider', function($routeProvider) {
                 };
 
                 $scope.editService = function(s) {
-                    //Object.assign($scope.selected, s);
-                    $scope.selected = $scope.services[s.source.$oid];
+                    $scope.selected = $scope.services[s.source._ref.$id.$oid];
                     $scope.options = s.options;
+                    $scope.choices = $scope.services;
                 }
             }
         })
