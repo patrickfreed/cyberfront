@@ -10,7 +10,7 @@
             <thead>
             <tr>
                 <th>User</th>
-                <th>Group</th>
+                <th>Groups</th>
                 <th>Password</th>
                 <th>Actions</th>
             </tr>
@@ -19,7 +19,7 @@
             <tbody>
             <tr ng-repeat="u in host.accounts">
                 <td>{{u.name}}</td>
-                <td>{{u.group}}</td>
+                <td>{{u.groups}}</td>
                 <td>{{u.password}}</td>
                 <td><a ng-click="editUser(u)" data-toggle="modal" data-target="#accountModal">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
             </tr>

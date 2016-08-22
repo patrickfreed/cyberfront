@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import bson
 from mongoengine import Document, StringField, ReferenceField, ListField, EmbeddedDocument, EmbeddedDocumentListField, DictField, \
     EmbeddedDocumentField, MapField, BooleanField, DynamicField, GenericReferenceField, DoesNotExist
 
@@ -81,7 +82,7 @@ class Vulnerability(Document):
 class Account(EmbeddedDocument):
     name = StringField()
     password = StringField()
-    group = StringField()
+    groups = ListField()
 
 
 class Host(Document):
@@ -97,6 +98,11 @@ class Host(Document):
     # In-Game stuff
     ip = StringField()
     owner = StringField()
+
+    def to_json_old(self):
+        mongo = self.to_mongo()
+        mongo['os'] = self.os.to_mongo()
+        return bson.json_util.dumps(mongo, indent=2)
 
     def install_os(self):
         if self.os is None:
@@ -118,7 +124,7 @@ class Host(Document):
             self.install_module(service)
 
     def install_module(self, ref, files=dict(), options=dict()):
-        host_dir = TMP + self.hostname + '/'
+        host_dir = TMP + self.world.name + '/' + self.hostname + '/'
         file_dir = host_dir + ref.name + '/'
         outfile = file_dir[:-1].encode('utf-8')
 
@@ -161,7 +167,7 @@ class Host(Document):
             shutil.copytree(ins, ous)
 
         if len(files) > 0 or has_defaults:
-            shutil.make_archive(outfile, 'gztar', TMP + self.hostname, ref.name)
+            shutil.make_archive(outfile, 'gztar', host_dir[:-1], ref.name)
 
         try:
             check = out.get(name=ref.name)

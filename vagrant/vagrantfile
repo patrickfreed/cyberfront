@@ -5,19 +5,20 @@ world_json = File.read('world.json')
 world_data = JSON.parse(world_json)
   
 url_hosts = "http://192.168.7.1/api/worlds/#{world_data['_id']['$oid']}/hosts"
-puts url_hosts
-puts world_data
 
-response = Net::HTTP.get(URI(url_hosts))
-data = JSON.parse(response)
+oses = JSON.parse(Net::HTTP.get(URI("http://192.168.7.1/api/os")))
+data = JSON.parse(Net::HTTP.get(URI(url_hosts)))
 
-puts data
+os_map = {}
+oses.each() { |o|
+  os_map[o['_id']['$oid']] = o
+}
 
 CF_DIR = '/tmp/cf_ins/'
 
 Vagrant.configure("2") { |config|
-  data['hosts'].each() { |host|
-    os = host['os']
+  data.each() { |host|
+    os = os_map[host['os']['$oid']]
 
     config.vm.define(host['hostname']) { |c|
       c.vm.box = os['box']

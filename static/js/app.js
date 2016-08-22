@@ -46,14 +46,12 @@ app.service('api', function($http) {
 
                     requests.push($http.get('/api/worlds/' + world_id + '/hosts').success(function (host_data) {
                         var hs = {};
-                        host_data.hosts.forEach(function (host) {
+                        host_data.forEach(function (host) {
                             self.hosts[host._id.$oid] = host;
                             hs[host._id.$oid] = host;
                         });
                         self.worlds[world_id].hosts = hs;
                     }));
-
-                    console.log(self.worlds);
                 });
 
                 Promise.all(requests).then(function() {
@@ -65,7 +63,7 @@ app.service('api', function($http) {
 
     this.updateHost = function(host) {
         self.hosts[host._id.$oid] = host;
-        self.worlds[host.world._id.$oid].hosts[host._id.$oid] = host;
+        self.worlds[host.world.$oid].hosts[host._id.$oid] = host;
     };
 
     this.doUpdate = function() {
@@ -106,14 +104,9 @@ app.service('api', function($http) {
         return new Promise(function(resolve, reject) {
             if (self.promise) {
                 self.promise.then(function(_) {
-                    console.log('resolving');
-                    console.log(self.worlds[world_id]);
                     resolve(self.worlds[world_id]);
                 })
             } else {
-                console.log(self.worlds);
-                console.log(self.worlds[world_id]);
-                console.log(world_id);
                 resolve(self.worlds[world_id]);
             }
         });
@@ -135,8 +128,6 @@ app.service('api', function($http) {
         return new Promise(function(resolve, reject) {
             if (self.promise) {
                 self.promise.then(function() {
-                    console.log(self.hosts);
-                    console.log('asdf');
                     resolve(self.hosts[id]);
                 })
             } else {
@@ -164,8 +155,6 @@ app.directive('navbar', function() {
         controller: function($scope, api) {
             api.getWorlds().then(function(worlds) {
                 $scope.$apply(function() {
-                    console.log('navbar promise returned');
-                    console.log(worlds);
                     $scope.worlds = worlds;
                 });
             })
@@ -250,20 +239,15 @@ app.directive('cfModalAccount', function() {
         controller: function($scope, $http) {
             $scope.post_account = function() {
                 var params = {
-                    action: 'ACCOUNT',
-                    account: $scope.user
+                    name: $scope.user.name,
+                    groups: [$scope.user.groups],
+                    password: $scope.user.password
                 };
 
-                var fd = new FormData();
-                fd.append('json', angular.toJson(params));
+                //var fd = new FormData();
+                //fd.append('json', angular.toJson(params));
 
-                $http.post('/api/hosts/' + $scope.host._id.$oid, fd,
-                    {
-                        transformRequest: angular.identity,
-                        headers: {
-                            'Content-Type': undefined
-                        }
-                    }).success(function(data) {
+                $http.post('/api/hosts/' + $scope.host._id.$oid + '/account', params).success(function(data) {
                     $scope.host = data;
                 });
             };
@@ -274,7 +258,7 @@ app.directive('cfModalAccount', function() {
 app.directive('cfModalModuleInstaller', function() {
     return {
         restrict: 'E',
-        templateUrl: '/static/templates/modal/service.html',
+        templateUrl: '/static/templates/modal/module.html',
         scope: {
             host: '=',
             selected: '=',
@@ -310,7 +294,7 @@ app.directive('cfModalModuleInstaller', function() {
                 var fd = new FormData();
 
                 var params = {
-                    module: $scope.selected._id.$oid,
+                    module_id: $scope.selected._id.$oid,
                     options: $scope.out,
                     action: 'MODULE'
                 };
@@ -321,7 +305,7 @@ app.directive('cfModalModuleInstaller', function() {
                     fd.set(key, $scope.files[key]);
                 });
 
-                $http.post('/api/hosts/' + $scope.host._id.$oid, fd, {
+                $http.post('/api/hosts/' + $scope.host._id.$oid + '/module', fd, {
                     transformRequest: angular.identity,
                     headers: {
                         'Content-Type': undefined
@@ -365,8 +349,33 @@ app.config(['$routeProvider', function($routeProvider) {
         // Index page
         .when('/', {
             templateUrl: '/static/templates/index.html',
-            controller: function(api) {
-                // I'm just here so I won't get fined.
+            controller: function(api, $scope, $http) {
+                $scope.debug = function() {
+                    $http.post('/api/debug/57b8e7419368974c2f4ff6f5', {
+                        action: 'action1',
+                        dog: 'cat'
+                    }).success(function(data) {
+                        console.log(data);
+                    }).error(function(data) {
+                        console.log(data);
+                    })
+                }
+            }
+        })
+
+        // Add world page
+        .when('/add-world', {
+            templateUrl: '/static/templates/add-world.html',
+            controller: function($scope, $http, api, $location) {
+                $scope.name = "";
+
+                $scope.submit = function() {
+                    $http.post('/api/worlds', {name: $scope.name}).success(function(data) {
+                        data.hosts = [];
+                        api.worlds[data._id.$oid] = data;
+                        $location.path('/view-world/' + data._id.$oid);
+                    })
+                }
             }
         })
 
@@ -376,8 +385,10 @@ app.config(['$routeProvider', function($routeProvider) {
             controller: function($scope, $routeParams, api) {
                 var world_id = $routeParams.world_id;
 
+                $scope.oses = api.oses;
+
                 $scope.clicked = function(host, action) {
-                    console.log(host.hostname);
+                    console.log(host.os);
                 };
 
                 api.getWorld(world_id).then(function(world) {
@@ -443,10 +454,13 @@ app.config(['$routeProvider', function($routeProvider) {
                 };
 
                 $scope.submit = function() {
-                    var params = {hostname: $scope.hostname, os: $scope.selected_os._id.$oid};
+                    var params = {hostname: $scope.hostname, os_id: $scope.selected_os._id.$oid};
 
-                    $http.post('/api/worlds/' + $scope.world._id.$oid + '/hosts', params).success(function(data) {
-                        console.log(data);
+                    $http.post('/api/worlds/' + $scope.world._id.$oid + '/add_host', params).success(function(data) {
+                        // api.worlds[$scope.world._id.$oid].hosts[data._id.$oid] = data;
+                        api.update();
+                    }).error(function(error) {
+                        console.log(error);
                     });
                 };
             }

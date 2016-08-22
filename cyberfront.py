@@ -1,10 +1,10 @@
-from collections import defaultdict
-
-import bson
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask import json
 from mongoengine import *
+from mongoengine.base import TopLevelDocumentMetaclass
+import os
 
+import util
 from host import Host, OperatingSystem, Account, Service, ConfigurationOption, Vulnerability
 from world import World
 
@@ -12,161 +12,166 @@ app = Flask(__name__)
 connect('cyberfront')
 
 
-@app.route('/')
+def route(path, method='GET', params=None, url_param=None, files=False):
+    def decorator(f):
+        def decorated(**kwargs):
+            f_kwargs = {}
+            if files:
+                form = request.form
+                if form is None:
+                    return 'missing form', 400
+                data = json.loads(request.form.get('json'))
+                f_kwargs['files'] = request.files
+            else:  # use json
+                data = request.json
+
+            if params:
+                if data is None:
+                    return "missing json params", 400
+
+                for key in params:
+                    f_kwargs[key] = data.get(key)
+                    if f_kwargs[key] is None:
+                        return "missing param: " + key, 400
+
+            if url_param:
+                key = kwargs.keys()[0]
+
+                if isinstance(url_param, TopLevelDocumentMetaclass):
+                    f_kwargs[key] = url_param.objects(id=kwargs[key]).first()
+
+                if f_kwargs.get(key) is None:
+                    return "invalid " + key, 400
+            return f(**f_kwargs)
+
+        app.add_url_rule(path, f.__name__, decorated, methods=[method])
+        return decorated
+    return decorator
+
+
+@route('/')
 def index():
     return app.send_static_file('index.html')
 
 
-@app.route('/api/worlds')
-def worlds():
-    return World.objects().to_json()
+@route('/api/debug/<host>', method='POST', params=['action', 'dog'], url_param=Host)
+def dog(action=None, dog=None, host=None):
+    print action
+    print dog
+    print host.to_json()
+    return "done"
 
 
-@app.route('/api/worlds/<worldid>')
-def get_world(worldid):
-    return World.objects(id=worldid).first().to_json()
+@route('/api/worlds')
+def get_worlds():
+    return jsonify(json.loads(World.objects().to_json()))
 
 
-@app.route('/api/worlds/<world_id>/hosts', methods=['GET', 'POST'])
-def hosts_in_world(world_id):
-    world = World.objects(id=world_id).first()
+@route('/api/worlds', method='POST', params=['name'])
+def add_world(name):
+    check = World.objects(name=name).first()
+    if check:
+        return "world already exists with that name", 400
 
-    if world is None:
-        return 'Invalid world id'
+    w = World(name=name)
+    w.save()
+    os.mkdir(util.WORLDS + name)
+    os.mkdir(util.TMP + name)
+    return w.to_json()
 
-    if request.method == 'GET':
-        hs = defaultdict(list)
-        hs['hosts']
 
-        for h in Host.objects(world=world_id):
-            mongo = h.to_mongo()
-            mongo['os'] = h.os.to_mongo()
-            hs['hosts'].append(mongo)
+@route('/api/worlds/<world>', url_param=World)
+def get_world(world):
+    return jsonify(world.to_mongo())
 
-        return bson.json_util.dumps(hs, indent=2)
+
+@route('/api/worlds/<world>', method='POST', params=['action'], url_param=World)
+def post_world(action, world):
+    if action == 'START':
+        world.start()
+    elif action == 'STOP':
+        world.stop()
+
+    return util.pretty_json(world)
+
+
+@route('/api/worlds/<world>/add_host', method='POST', params=['hostname', 'os_id'], url_param=World)
+def add_host_to_world(world, hostname, os_id):
+    ops = OperatingSystem.objects(id=os_id).first()
+    check = Host.objects(world=world, hostname=hostname).first()
+
+    if check:
+        return 'Duplicate hostname in World'
+
+    if ops is None:
+        return 'Invalid Operating System id'
+
+    h = Host(hostname=hostname, os=ops, world=world)
+    h.install_os()
+    h.save()
+
+    return h.to_json()
+
+
+@route('/api/worlds/<world>/hosts', url_param=World)
+def get_hosts_in_world(world):
+    return util.pretty_json(Host.objects(world=world))
+
+@route('/api/hosts')
+def get_all_hosts():
+    return util.pretty_json(Host.objects())
+
+
+@route('/api/hosts/<host>', url_param=Host)
+def get_host(host):
+    return util.pretty_json(host)
+
+
+@route('/api/hosts/<host>/module', method='POST', params=['module_id', 'options'], url_param=Host, files=True)
+def install_module(host, files, module_id, options):
+    service = Service.objects(id=module_id).first()
+    vuln = Vulnerability.objects(id=module_id).first()
+
+    if service is None and vuln is None:
+        return 'invalid service id', 400
+
+    ref = service if service else vuln
+
+    if host.install_module(ref, files=files, options=options):
+        host.save()
+        return host.to_json()
     else:
-        if request.json.get('action') == 'DELETE':
-            return 'not implemented'
-
-        hostname = request.json.get('hostname')
-        os_id = request.json.get('os')
-
-        if hostname is None or os_id is None:
-            return 'Missing parameters'
-
-        os = OperatingSystem.objects(id=request.json.get('os')).first()
-        check = Host.objects(world=world, hostname=hostname).first()
-
-        if check:
-            return 'Duplicate hostname in World'
-
-        if os is None:
-            return 'Invalid Operating System id'
-
-        h = Host(hostname=hostname, os=os, world=world)
-        h.install_os()
-        h.save()
-
-        return "Host added successfully"
+        return 'installation failed', 400
 
 
-@app.route('/api/hosts')
-def hosts():
-    hs = defaultdict(list)
+@route('/api/hosts/<host>/account', method='POST', params=['name', 'password', 'groups'], url_param=Host)
+def setup_account(host, name, password, groups):
+    try:
+        check = host.accounts.get(name=name)
+        check.groups = groups
+        check.password = password
+        host.save()
+    except DoesNotExist:
+        mongo_account = Account(name=name, groups=groups, password=password)
+        host.accounts.append(mongo_account)
+        host.save()
 
-    for h in Host.objects():
-        mongo = h.to_mongo()
-        mongo['os'] = h.os.to_mongo()
-        hs['hosts'].append(mongo)
-
-    return bson.json_util.dumps(hs, indent=2)
-
-
-@app.route('/api/hosts/<host_id>', methods=['GET', 'POST'])
-def get_host(host_id):
-    host = Host.objects(id=host_id).first()
-
-    if host is None:
-        return 'Invalid host id'
-
-    if request.method == 'GET':
-        mongo = host.to_mongo()
-        mongo['os'] = host.os.to_mongo()
-        return bson.json_util.dumps(mongo, indent=2)
-    else:
-        # action = request.json.get('action')
-        data = json.loads(request.form.get('json'))
-
-        if data is None:
-            return 'no form json', 400
-
-        action = data.get('action')
-
-        if action == 'ACCOUNT':
-            account = data.get('account')
-
-            if account is None:
-                return 'Missing account data'
-
-            name = account.get('name')
-            password = account.get('password')
-            group = account.get('group')
-
-            if name is None or password is None:
-                return 'Missing username or password'
-
-            if group is None:
-                group = account.get('name')
-
-            try:
-                check = host.accounts.get(name=name)
-                check.group = group
-                check.password = password
-                host.save()
-            except DoesNotExist:
-                mongo_account = Account(name=name, group=group, password=password)
-                host.accounts.append(mongo_account)
-                host.save()
-
-            return host.to_json()
-        elif action == 'MODULE':
-            module_id = data.get('module')
-            options = data.get('options')
-            files = request.files
-
-            if module_id is None or options is None:
-                return "missing param", 400
-
-            service = Service.objects(id=module_id).first()
-            vuln = Vulnerability.objects(id=module_id).first()
-
-            if service is None and vuln is None:
-                return 'invalid service id', 400
-
-            ref = service if service else vuln
-
-            if host.install_module(ref, files=files, options=options):
-                host.save()
-                return host.to_json()
-            else:
-                return 'installation failed', 400
-        else:
-            return 'invalid action', 400
+    return host.to_json()
 
 
-@app.route('/api/os')
+@route('/api/os')
 def get_oses():
-    return OperatingSystem.objects().to_json()
+    return util.pretty_json(OperatingSystem.objects())
 
 
-@app.route('/api/services')
+@route('/api/services')
 def get_services():
-    return Service.objects().to_json()
+    return util.pretty_json(Service.objects())
 
 
-@app.route('/api/vulns')
+@route('/api/vulns')
 def get_vulns():
-    return Vulnerability.objects().to_json()
+    return util.pretty_json(Vulnerability.objects())
 
 
 @app.route('/api/debug/rfi.php')

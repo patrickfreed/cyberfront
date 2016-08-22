@@ -9,19 +9,36 @@
             </div>
 
             <div class="modal-body">
-                <div class="input-group">
-                    <span class="input-group-addon">Username</span>
-                    <input ng-model="user.name" type="text" class="form-control" placeholder="bob" aria-describedby="basic-addon1">
-                </div>
+                <div class="form-horizontal">
+                    <div class="form-group">
+                        <label class="control-label col-lg-2" for="name">
+                            Name
+                        </label>
 
-                <div class="input-group">
-                    <span class="input-group-addon">Group</span>
-                    <input ng-model="user.group" type="text" class="form-control" placeholder="bob" aria-describedby="basic-addon1">
-                </div>
+                        <div class="col-lg-10">
+                            <input id="name" placeholder="bob" ng-model="user.name" type="text" class="form-control col-lg-10" aria-describedby="basic-addon1">
+                        </div>
+                    </div>
 
-                <div class="input-group">
-                    <span class="input-group-addon">Password</span>
-                    <input ng-model="user.password" type="text" class="form-control" placeholder="password123" aria-describedby="basic-addon1">
+                    <div class="form-group">
+                        <label class="control-label col-lg-2" for="groups">
+                            Groups
+                        </label>
+
+                        <div class="col-lg-10">
+                            <input id="groups" placeholder="bob" ng-model="user.groups" type="text" class="form-control col-lg-10" aria-describedby="basic-addon1">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="control-label col-lg-2" for="pass">
+                            Password
+                        </label>
+
+                        <div class="col-lg-10">
+                            <input id="pass" placeholder="password123" ng-model="user.password" type="text" class="form-control col-lg-10" aria-describedby="basic-addon1">
+                        </div>
+                    </div>
                 </div>
             </div>
 

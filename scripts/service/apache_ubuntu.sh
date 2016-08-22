@@ -39,6 +39,9 @@ cp -r ./* ${wwwroot}
 # Update root configuration
 sed -i "s#DocumentRoot /var/www/html#DocumentRoot ${wwwroot}#g" /etc/apache2/sites-enabled/000-default.conf
 
+# Give server access to files, wherever they are
+sed -i "s#<Directory /var/www>#<Directory ${wwwroot}>#g" /etc/apache2/apache2.conf
+
 # Change ports
 sed -i "s/Listen 80/Listen ${port}/g" /etc/apache2/ports.conf
 sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:${port}>/g" /etc/apache2/sites-enabled/000-default.conf
