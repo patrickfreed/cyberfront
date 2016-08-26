@@ -40,10 +40,6 @@ class Module(EmbeddedDocument):
     source = GenericReferenceField(options=['Service', 'Vulnerability'])  # Bad
 
 
-# class ServiceModule(Module):
-#    source = ReferenceField('Service')
-
-
 class Service(Document):
     install = SERVICES
 
@@ -52,11 +48,6 @@ class Service(Document):
     version = StringField()
     options = MapField(EmbeddedDocumentField(ConfigurationOption))
     vulnerabilities = ListField(ReferenceField('Vulnerability'))
-
-
-# class VulnerabilityModule(Module):
-#    source = ReferenceField('Vulnerability')
-#    notes = StringField()  # admin notes, can be used for automatic report generation later
 
 
 class Vulnerability(Document):

@@ -193,11 +193,22 @@ if len(Service.objects()) == 0:
         'php': ConfigurationOption(name='Install PHP', description='Whether to install PHP or not.', type='BOOLEAN'),
         'files': ConfigurationOption(name='Server Files', description='Files to serve.', type='FILE')
     }
-    apache2 = Service(name='apache_ubuntu', service_name='Apache Web Server', version='2', options=options)
+    apache2 = Service(name='apache_ubuntu', full_name='Apache Web Server', version='2', options=options)
     apache2.save()
 
-if len(World.objects()) == 0:
-    World(name="world1").save()
+if len(Service.objects()) == 3:
+    options = {
+        'user': ConfigurationOption(name='Run As User', description='User to run the service as.', type='USER'),
+        'port': ConfigurationOption(name='Port', description='Port to listen on.', type='INT', default='3306'),
+        'password': ConfigurationOption(name='Root Password')
+    }
+    mysql = Service(name='mysql_ubuntu', full_name='MySQL Server', version='5.0.15', options=options)
+
+    local = Vulnerability(name='local_mysql', full_name='MySQL UDF Local Privilege Escalation',
+                          category='Privilege Escalation', requirements=['mysql_ubuntu'], options={})
+    local.save()
+    mysql.vulnerabilities = [local]
+    mysql.save()
 
 if len(Vulnerability.objects()) == 0:
     options = {
@@ -206,7 +217,7 @@ if len(Vulnerability.objects()) == 0:
         'service': ConfigurationOption(name='Affected Service', type='SERVICE')
     }
 
-    rfi = Vulnerability(name='rfi_apache', full_name='PHP Remote File Inclusion Vulnerability',
+    rfi = Vulnerability(name='rfi_apache', full_name='PHP Remote File Inclusion',
                         category='File Inclusion', requirements=['apache_ubuntu'], options=options)
     rfi.save()
 
