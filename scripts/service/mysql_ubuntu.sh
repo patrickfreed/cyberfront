@@ -42,5 +42,12 @@ apt-get install libmysqlclient15-dev
 service mysql start
 mysql -u root -Bse "use mysql;update user set password=PASSWORD('${password}') where User='root';flush privileges;";
 
+# chmod a+r /var/run/mysqld
+# chmod a=rwx /var/run/mysqld/mysqld.sock
+# chmod a+r /var/run/mysqld/mysqld.pid
+
+# TODO: not this
+chmod -R 777 /var/run/mysqld
+
 echo "mysql installed!"
 

@@ -52,7 +52,7 @@ sed -i "s/APACHE_RUN_GROUP=www-data/APACHE_RUN_GROUP=${user}/g" /etc/apache2/env
 
 # Configure PHP
 if [ ${php} == "true" ]; then
-    apt-get -y install php5 libapache2-mod-php5 php5-mcrypt
+    apt-get -y install php5 libapache2-mod-php5 php5-mcrypt php5-mysql
 else
     service apache2 start
 fi

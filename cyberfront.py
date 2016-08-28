@@ -235,8 +235,13 @@ if Service.objects(name='mediawiki_ubuntu').first() is None:
     mw.save()
 
 if Vulnerability.objects(name='rce_mediawiki').first() is None:
-    v = Vulnerability(name='rce_mediawiki', full_name='thumb.php Remote Command Execution', cve="CVE-2014-1610",
-                      category='Remote Code Execution', options={})
+    options = {
+        'mediawiki': ConfigurationOption(name='Affected MediaWiki Install', type='SERVICE'),
+        'webserver': ConfigurationOption(name='Affected Web Server', type='SERVICE')
+    }
+
+    v = Vulnerability(name='rce_mediawiki', full_name='MediaWiki thumb.php Remote Command Execution',
+                      cve="CVE-2014-1610", category='Remote Code Execution', options=options)
     v.save()
 
 
