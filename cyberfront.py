@@ -234,6 +234,22 @@ if Service.objects(name='mediawiki_ubuntu').first() is None:
     mw = Service(name='mediawiki_ubuntu', full_name='MediaWiki', version='1.22.1', options=options)
     mw.save()
 
+if Service.objects(name='webcalendar_ubuntu').first() is None:
+    options = {
+        'webserver': ConfigurationOption(name='Web Server', type='SERVICE'),
+        'host_directory': ConfigurationOption(name='Calendar install location')
+    }
+    s = Service(name='webcalendar_ubuntu', full_name='WebCalendar', version='1.2.4', options=options)
+
+    vuln = Vulnerability.objects(name='rce_webcalendar').first()
+    if vuln is None:
+        vuln = Vulnerability(name='rce_webcalendar', full_name='WebCalendar index.php Remote Code Execution',
+                             category='Remote Code Execution', cve='CVE-2012-1495, CVE-2012-1496')
+        vuln.save()
+
+    s.vulnerabilities = [vuln]
+    s.save()
+
 if Vulnerability.objects(name='rce_mediawiki').first() is None:
     options = {
         'mediawiki': ConfigurationOption(name='Affected MediaWiki Install', type='SERVICE'),
@@ -255,6 +271,7 @@ if Vulnerability.objects(name='rfi_apache') is None:
     rfi = Vulnerability(name='rfi_apache', full_name='PHP Remote File Inclusion',
                         category='File Inclusion', requirements=['apache_ubuntu'], options=options)
     rfi.save()
+
 
 print "cyberfront starting"
 
