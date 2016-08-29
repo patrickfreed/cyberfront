@@ -41,4 +41,7 @@ mysql -u root "-p${dbpass}" -Bse "create database vcms;";
 curl -s "localhost${host_directory}/index.php?page=install" > /dev/null
 curl -s "localhost${host_directory}/index.php?page=install2" > /dev/null
 
+# Cleanup
+rm -r install/
+
 echo "V-CMS installation complete!"
