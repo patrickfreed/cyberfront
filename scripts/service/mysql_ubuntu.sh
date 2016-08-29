@@ -35,8 +35,8 @@ chown -R ${user} /var/lib/mysql
 chgrp -R ${user} /var/lib/mysql
 
 # Install client
-apt-get install mysql-client-core-5.5
-apt-get install libmysqlclient15-dev
+apt-get install -y mysql-client-core-5.5
+apt-get install -y libmysqlclient15-dev
 
 # Start up, set password
 service mysql start

@@ -250,6 +250,23 @@ if Service.objects(name='webcalendar_ubuntu').first() is None:
     s.vulnerabilities = [vuln]
     s.save()
 
+if Service.objects(name='vcms_php').first() is None:
+    options = {
+        'webserver': ConfigurationOption(name='Web Server', type='SERVICE'),
+        'host_directory': ConfigurationOption(name='Relative Install location'),
+        'database': ConfigurationOption(name='Database', type='SERVICE')
+    }
+    s = Service(name='vcms_php', full_name='V-CMS', version='1.0', options=options)
+    v = Vulnerability.objects(name='rce_vcms').first()
+
+    if v is None:
+        v = Vulnerability(name='rce_vcms', full_name='V-CMS PHP File Upload and Execute',
+                          category='Remote Code Execution', cve='CVE-2011-4828')
+        v.save()
+
+    s.vulnerabilities = [v]
+    s.save()
+
 if Vulnerability.objects(name='rce_mediawiki').first() is None:
     options = {
         'mediawiki': ConfigurationOption(name='Affected MediaWiki Install', type='SERVICE'),
