@@ -19,9 +19,11 @@ wwwroot=`cat ${webserver}.json | python -c 'import sys, json; print json.load(sy
 wikiroot=`cat ${mediawiki}.json | python -c 'import sys, json; print json.load(sys.stdin)["options"]["host_directory"]'`
 
 # Update configuration
-sed -i "s/\$wgEnableUploads = false;/\$wgEnableUploads = true;/g" "${wwwroot}/${wikiroot}/LocalSettings.php"
+sed -i "s/\$wgEnableUploads = false;/\$wgEnableUploads = true;/g" "${wwwroot}${wikiroot}/LocalSettings.php"
 
 echo '$wgUseImageMagick = "true";' >> "${wwwroot}${wikiroot}/LocalSettings.php"
 echo '$wgImageMagickConvertCommand = "/usr/bin/convert";' >> "${wwwroot}${wikiroot}/LocalSettings.php"
 echo 'require_once "$IP/extensions/PdfHandler/PdfHandler.php";' >> "${wwwroot}${wikiroot}/LocalSettings.php"
 echo '$wgFileExtensions[] = "pdf";' >> "${wwwroot}${wikiroot}/LocalSettings.php"
+
+echo "mediawiki vulnerability installation"

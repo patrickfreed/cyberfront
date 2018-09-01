@@ -1,4 +1,4 @@
-from mongoengine import Document, StringField
+from mongoengine import Document, StringField, EmbeddedDocumentListField, DictField, EmbeddedDocumentField, MapField
 
 import subprocess
 
@@ -8,10 +8,11 @@ import util
 class World(Document):
     name = StringField(unique=True)
     status = StringField(options=['STARTING', 'RUNNING', 'STOPPED', 'CLEAN'])
+    hosts = MapField(EmbeddedDocumentField('Host'))
 
     def __init__(self, **kwargs):
         super(World, self).__init__(**kwargs)
-        self.dir = util.WORLDS + self.name + '/'
+        self.dir = util.WORLDS + '/' + self.name + '/'
 
     def start(self):
         if self.status == 'CLEAN':

@@ -10,7 +10,7 @@ SERVICE_NAME=$1
 
 # Extract files
 cd ${CF_DIR}
-tar -zxf ${SERVICE_NAME}.tar.gz
+# tar -zxf ${SERVICE_NAME}.tar.gz
 cd ${SERVICE_NAME}
 
 # Install server

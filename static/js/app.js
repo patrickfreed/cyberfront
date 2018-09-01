@@ -1,5 +1,10 @@
 var app = angular.module('cyberfront', ['ngRoute']);
 
+// Fix routing hash problem. See: https://stackoverflow.com/questions/41272314/angularjs-all-slashes-in-url-changed-to-2f
+app.config(['$locationProvider', function($locationProvider) {
+  $locationProvider.hashPrefix('');
+}]);
+
 // Custom Services
 
 app.service('api', function($http) {
@@ -7,29 +12,29 @@ app.service('api', function($http) {
 
     this.services = {};
     this.vulns = {};
-    this.hosts = {};
     this.worlds = {};
     this.oses = {};
 
     this.updateOperatingSystems = function() {
-        return $http.get('/api/os').success(function(data) {
-            data.forEach(function(os) {
+        return $http.get('/api/os').then(function(data) {
+            data.data.forEach(function(os) {
                 self.oses[os._id.$oid] = os;
             })
         })
     };
 
     this.updateVulns = function() {
-        return $http.get('/api/vulns').success(function(data) {
-            data.forEach(function(vuln) {
+        return $http.get('/api/vulns').then(function(data) {
+            data.data.forEach(function(vuln) {
                 self.vulns[vuln._id.$oid] = vuln;
             });
         })
     };
 
     this.updateServices = function() {
-        return $http.get('/api/services').success(function(data) {
-            data.forEach(function(service) {
+        return $http.get('/api/services').then(function(data) {
+            console.log(data);
+            data.data.forEach(function(service) {
                 self.services[service._id.$oid] = service;
             });
         })
@@ -37,33 +42,24 @@ app.service('api', function($http) {
 
     this.updateWorlds = function() {
         return new Promise(function(resolve, reject) {
-            $http.get('/api/worlds').success(function (data) {
-                var requests = [];
-
-                data.forEach(function (world) {
+            $http.get('/api/worlds').then(function (data) {
+                data.data.forEach(function (world) { 
                     var world_id = world._id.$oid;
+
+                    // var hosts_dict = {};
+                    //world.hosts.forEach(function (host) {
+                    //    hosts_dict[host.hostname] = host;
+                    //});
+                    // world.hosts = hosts_dict;
                     self.worlds[world_id] = world;
-
-                    requests.push($http.get('/api/worlds/' + world_id + '/hosts').success(function (host_data) {
-                        var hs = {};
-                        host_data.forEach(function (host) {
-                            self.hosts[host._id.$oid] = host;
-                            hs[host._id.$oid] = host;
-                        });
-                        self.worlds[world_id].hosts = hs;
-                    }));
                 });
-
-                Promise.all(requests).then(function() {
-                    resolve()
-                });
-            });
+                resolve();
+            }, reject);
         })
     };
 
-    this.updateHost = function(host) {
-        self.hosts[host._id.$oid] = host;
-        self.worlds[host.world.$oid].hosts[host._id.$oid] = host;
+    this.updateHost = function(world_id, host) {
+        self.worlds[world_id].hosts[host.name] = host;
     };
 
     this.doUpdate = function() {
@@ -115,7 +111,9 @@ app.service('api', function($http) {
     this.getWorlds = function() {
         return new Promise(function(resolve, reject) {
             if (self.promise) {
+                console.log("waiting on self.promise");
                 self.promise.then(function(_) {
+                    console.log("done");
                     resolve(self.worlds);
                 })
             } else {
@@ -150,12 +148,17 @@ app.service('api', function($http) {
 
 app.directive('navbar', function() {
     return {
-        restrict: 'E',
+        restrict: 'EA',
+        replace: false,
         templateUrl: '/static/templates/navbar.html',
         controller: function($scope, api) {
+            console.log("getting worlds");
+
             api.getWorlds().then(function(worlds) {
+                console.log("got worlds");
                 $scope.$apply(function() {
                     $scope.worlds = worlds;
+                    console.log(worlds);
                 });
             })
         }
@@ -234,9 +237,10 @@ app.directive('cfModalAccount', function() {
         templateUrl: '/static/templates/modal/account.html',
         scope: {
             host: '=',
-            user: '='
+            user: '=',
+            world: '='
         },
-        controller: function($scope, $http) {
+        controller: function($scope, $http, api) {
             $scope.post_account = function() {
                 var params = {
                     name: $scope.user.name,
@@ -247,8 +251,12 @@ app.directive('cfModalAccount', function() {
                 //var fd = new FormData();
                 //fd.append('json', angular.toJson(params));
 
-                $http.post('/api/hosts/' + $scope.host._id.$oid + '/account', params).success(function(data) {
-                    $scope.host = data;
+                console.log('adding account');
+                console.log($scope);
+
+                $http.post('/api/worlds/' + $scope.world._id.$oid + '/hosts/' + $scope.host.hostname + '/account', params).then(function(data) {
+                    $scope.host = data.data;
+                    api.updateHost($scope.world._id.$oid, data.data);
                 });
             };
         }
@@ -261,6 +269,7 @@ app.directive('cfModalModuleInstaller', function() {
         templateUrl: '/static/templates/modal/module.html',
         scope: {
             host: '=',
+            world: '=',
             selected: '=',
             out: '=options',
             choices: '=',
@@ -305,17 +314,17 @@ app.directive('cfModalModuleInstaller', function() {
                     fd.set(key, $scope.files[key]);
                 });
 
-                $http.post('/api/hosts/' + $scope.host._id.$oid + '/module', fd, {
+                $http.post('/api/worlds/' + $scope.world._id.$oid + '/hosts/' + $scope.host.hostname + '/module', fd, {
                     transformRequest: angular.identity,
                     headers: {
                         'Content-Type': undefined
                     }
-                }).success(function(data) {
-                    $scope.host = data;
-                    api.updateHost(data);
-                }).error(function(data) {
+                }).then(function(data) {
+                    $scope.host = data.data;
+                    api.updateHost(world._id.$oid, data.data);
+                }, function(data) {
                     console.log(data);
-                })
+                });
             }
         }
     }
@@ -354,9 +363,9 @@ app.config(['$routeProvider', function($routeProvider) {
                     $http.post('/api/debug/57b8e7419368974c2f4ff6f5', {
                         action: 'action1',
                         dog: 'cat'
-                    }).success(function(data) {
+                    }).then (function(data) {
                         console.log(data);
-                    }).error(function(data) {
+                    }, function(data) {
                         console.log(data);
                     })
                 }
@@ -370,10 +379,10 @@ app.config(['$routeProvider', function($routeProvider) {
                 $scope.name = "";
 
                 $scope.submit = function() {
-                    $http.post('/api/worlds', {name: $scope.name}).success(function(data) {
+                    $http.post('/api/worlds', {name: $scope.name}).then(function(data) {
                         data.hosts = [];
-                        api.worlds[data._id.$oid] = data;
-                        $location.path('/view-world/' + data._id.$oid);
+                        api.worlds[data.data._id.$oid] = data.data;
+                        $location.path('/view-world/' + data.data._id.$oid);
                     })
                 }
             }
@@ -413,15 +422,18 @@ app.config(['$routeProvider', function($routeProvider) {
                 $scope.services = api.services;
                 $scope.vulns = api.vulns;
 
-                api.getHost(host_id).then(function(host) {
-                    $scope.$apply(function() {
-                        $scope.host = host;
-                    })
-                });
+                // api.getHost(host_id).then(function(host) {
+                //    $scope.$apply(function() {
+                //        $scope.host = host;
+                //    })
+                // });
 
                 api.getWorld(world_id).then(function(world) {
                     $scope.$apply(function() {
                         $scope.world = world;
+                        $scope.host = world.hosts[host_id];
+                        console.log(world);
+                        console.log(host_id);
                     });
                 });
 
@@ -456,10 +468,10 @@ app.config(['$routeProvider', function($routeProvider) {
                 $scope.submit = function() {
                     var params = {hostname: $scope.hostname, os_id: $scope.selected_os._id.$oid};
 
-                    $http.post('/api/worlds/' + $scope.world._id.$oid + '/add_host', params).success(function(data) {
-                        // api.worlds[$scope.world._id.$oid].hosts[data._id.$oid] = data;
-                        api.update();
-                    }).error(function(error) {
+                    $http.post('/api/worlds/' + $scope.world._id.$oid + '/add_host', params).then(function(data) {
+                        // api.worlds[$scope.world._id.$oid].hosts[data._id.$oid] = data
+                        api.updateHost($scope.world._id.$oid, data.data);
+                    }, function(error) {
                         console.log(error);
                     });
                 };

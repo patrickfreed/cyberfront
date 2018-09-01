@@ -16,14 +16,23 @@ SERVICE_NAME=$1
 # wwwroot: root of webserver
 ##
 
+set -e
+
+echo "Configuration options:"
+echo "files: $files"
+echo "user: $user"
+echo "group: $group"
+echo "port: $port"
+echo "wwwroot: $wwwroot"
+
 # Extract files
 cd ${CF_DIR}
-tar -zxf ${SERVICE_NAME}.tar.gz
+# tar -zxf ${SERVICE_NAME}.tar.gz
 cd ${SERVICE_NAME}
 
 # Install service
 apt-get -y install apache2
-service stop apache2
+service apache2 stop
 
 # Replace root web server
 # Be careful...
@@ -31,16 +40,20 @@ if [ -d ${wwwroot} ]; then
     rm -r ${wwwroot}
 fi
 
-mkdir ${wwwroot}
-tar -zxf ${files}
-cd wwwroot
-cp -r ./* ${wwwroot}
+mkdir -p ${wwwroot}
+
+mkdir server_files
+tar -zxf ${files} -C server_files
+cp -r server_files/* ${wwwroot}
+
+chown -R ${user} ${wwwroot}
+chmod -R o+rx ${wwwroot}
 
 # Update root configuration
 sed -i "s#DocumentRoot /var/www/html#DocumentRoot ${wwwroot}#g" /etc/apache2/sites-enabled/000-default.conf
 
 # Give server access to files, wherever they are
-sed -i "s#<Directory /var/www>#<Directory ${wwwroot}>#g" /etc/apache2/apache2.conf
+sed -i "s#<Directory /var/www/>#<Directory ${wwwroot}>#g" /etc/apache2/apache2.conf
 
 # Change ports
 sed -i "s/Listen 80/Listen ${port}/g" /etc/apache2/ports.conf
@@ -56,3 +69,5 @@ if [ ${php} == "true" ]; then
 else
     service apache2 start
 fi
+
+echo "Apache Web Server installed!"

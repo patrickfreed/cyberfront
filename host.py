@@ -6,7 +6,6 @@ from mongoengine import Document, StringField, ReferenceField, ListField, Embedd
     EmbeddedDocumentField, MapField, BooleanField, DynamicField, GenericReferenceField, DoesNotExist
 
 import util
-from util import TMP, SERVICES, VULNERABILITIES
 
 
 class OperatingSystem(Document):
@@ -41,7 +40,7 @@ class Module(EmbeddedDocument):
 
 
 class Service(Document):
-    install = SERVICES
+    install = util.SERVICES
 
     name = StringField()
     full_name = StringField()
@@ -60,7 +59,7 @@ class Vulnerability(Document):
         'File Inclusion'
     ]
 
-    install = VULNERABILITIES
+    install = util.VULNERABILITIES
 
     name = StringField()
     full_name = StringField()
@@ -76,7 +75,7 @@ class Account(EmbeddedDocument):
     groups = ListField()
 
 
-class Host(Document):
+class Host(EmbeddedDocument):
     hostname = StringField(required=True)
     os = ReferenceField('OperatingSystem')
 
@@ -84,18 +83,19 @@ class Host(Document):
     vulnerabilities = EmbeddedDocumentListField(Module)
     accounts = EmbeddedDocumentListField(Account)
 
-    world = ReferenceField('World')
-
     # In-Game stuff
     ip = StringField()
     owner = StringField()
 
+    def __init__(self, **kwargs):
+        super(Host, self).__init__(**kwargs)
+    
     def to_json_old(self):
         mongo = self.to_mongo()
         mongo['os'] = self.os.to_mongo()
         return bson.json_util.dumps(mongo, indent=2)
 
-    def install_os(self):
+    def install_os(self, install_dir):
         if self.os is None:
             return
 
@@ -112,10 +112,10 @@ class Host(Document):
             self.accounts.append(account)
 
         for service in self.os.services:
-            self.install_module(service)
+            self.install_module(service, install_dir)
 
-    def install_module(self, ref, files=dict(), options=dict()):
-        host_dir = TMP + self.world.name + '/' + self.hostname + '/'
+    def install_module(self, ref, install_dir, files=dict(), options=dict()):
+        host_dir = install_dir + '/'
         file_dir = host_dir + ref.name + '/'
         outfile = file_dir[:-1].encode('utf-8')
 
@@ -126,7 +126,7 @@ class Host(Document):
             os.mkdir(file_dir)
 
         opts = {}
-        install = ref.install + ref.name + '.sh'
+        install = ref.install + '/' + ref.name + '.sh'
 
         if isinstance(ref, Service):
             out = self.services
@@ -151,31 +151,28 @@ class Host(Document):
                     return False
             opts[key] = config
 
-        has_defaults = os.path.isdir(util.DEFAULTS + ref.name)
+        has_defaults = os.path.isdir(util.DEFAULTS + '/' + ref.name)
         if has_defaults and not os.path.isdir(file_dir + 'defaults'):
-            ins = util.DEFAULTS + ref.name
+            ins = util.DEFAULTS + '/' + ref.name
             ous = file_dir + 'defaults'
             shutil.copytree(ins, ous)
-
-        if len(files) > 0 or has_defaults:
-            shutil.make_archive(outfile, 'gztar', host_dir[:-1], ref.name)
 
         try:
             check = out.get(name=ref.name)
             check.options = opts
 
             if len(files) > 0 or has_defaults:
-                check.files = outfile + '.tar.gz'
+                check.files = outfile
         except DoesNotExist:
             module = Module(name=ref.name, options=opts, install=install, source=ref)
 
             if len(files) > 0 or has_defaults:
-                module.files = outfile + '.tar.gz'
+                module.files = outfile
 
             out.append(module)
 
             if isinstance(ref, Service):
                 for v in ref.vulnerabilities:
-                    self.install_module(v)
+                    self.install_module(v, install_dir)
 
         return True

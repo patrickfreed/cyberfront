@@ -16,7 +16,7 @@
                 <td>{{host.hostname}}</td>
                 <td>{{oses[host.os.$oid].name}} {{oses[host.os.$oid].version}}</td>
                 <td><span ng-repeat="service in host.services">{{service.name}}</span></td>
-                <td><a href="#/view-host/{{world._id.$oid}}/{{host._id.$oid}}">View</a> | <a ng-click="clicked(host, 'edit')">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
+                <td><a href="#/view-host/{{world._id.$oid}}/{{host.hostname}}">View</a> | <a ng-click="clicked(host, 'edit')">Edit</a> | <a ng-click="clicked(host, 'delete')">Delete</a></td>
             </tr>
             </tbody>
         </table>

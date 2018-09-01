@@ -1,13 +1,15 @@
 require 'net/http'
 require 'json'
 
+api_url = "localhost:8080"
+
 world_json = File.read('world.json')
 world_data = JSON.parse(world_json)
   
-url_hosts = "http://192.168.7.1/api/worlds/#{world_data['_id']['$oid']}/hosts"
+url_world = "http://#{api_url}/api/worlds/#{world_data['_id']['$oid']}"
 
-oses = JSON.parse(Net::HTTP.get(URI("http://192.168.7.1/api/os")))
-data = JSON.parse(Net::HTTP.get(URI(url_hosts)))
+oses = JSON.parse(Net::HTTP.get(URI("http://#{api_url}/api/os")))
+world = JSON.parse(Net::HTTP.get(URI(url_world)))
 
 os_map = {}
 oses.each() { |o|
@@ -17,7 +19,7 @@ oses.each() { |o|
 CF_DIR = '/tmp/cf_ins/'
 
 Vagrant.configure("2") { |config|
-  data.each() { |host|
+  world['hosts'].each() { |hostname, host|
     os = os_map[host['os']['$oid']]
 
     config.vm.define(host['hostname']) { |c|
@@ -28,8 +30,10 @@ Vagrant.configure("2") { |config|
       if os['kernel'] == 'LINUX' then
         args = []
 
-        c.vm.provision("shell", inline: "mkdir #{CF_DIR} && chmod 777 #{CF_DIR}")
-        
+        # c.vm.provision("shell", inline: "apt-get update")
+        # c.vm.provision("shell", inline: "mkdir #{CF_DIR} && chmod 777 #{CF_DIR}")
+        # c.vm.provision("file", source: '../scripts', destination: "#{CF_DIR}scripts_debug/")
+
         host['accounts'].each() { |account|
           args << "#{account['name']}:#{account['password']}"
         }
@@ -42,6 +46,11 @@ Vagrant.configure("2") { |config|
 
         (host['services'] + host['vulnerabilities']).each() { |mod|
           name = mod['name']
+
+          if name != 'rce_mediawiki' then
+            next
+          end
+
           options = mod['options']
           files = mod['files']
 
@@ -50,7 +59,7 @@ Vagrant.configure("2") { |config|
           if files then
             c.vm.provision("file",
                            source: files,
-                           destination: "#{CF_DIR}#{name}.tar.gz")
+                           destination: "#{CF_DIR}#{name}")
           end
 
           options.each() { |k,v|
@@ -64,7 +73,7 @@ Vagrant.configure("2") { |config|
           }
 
           options['CF_DIR'] = CF_DIR
-          
+
           c.vm.provision("shell",
                          path: mod['install'],
                          args: [name],
@@ -73,7 +82,7 @@ Vagrant.configure("2") { |config|
                          name: name)
         }
 
-        c.vm.provision("shell", inline: "rm -r #{CF_DIR}; rm /tmp/vagrant-shell")
+        # c.vm.provision("shell", inline: "rm -r #{CF_DIR}; rm /tmp/vagrant-shell")
       end
     }
   }
